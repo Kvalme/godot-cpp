@@ -12,7 +12,6 @@ def generate_mod_version(argcount, const=False, returns=False):
 virtual $RETVAL _##m_name($FUNCARGS) $CONST override; \\
 """
     sproto = str(argcount)
-    method_info = ""
     if returns:
         sproto += "R"
         s = s.replace("$RETTYPE", "m_ret, ")
@@ -336,7 +335,7 @@ def generate_builtin_bindings(api, output_dir, build_config):
             if is_included_type(builtin_api["name"]):
                 if "enums" in builtin_api:
                     for enum_api in builtin_api["enums"]:
-                        builtin_binds.append(f"VARIANT_ENUM_CAST({builtin_api['name']}, {enum_api['name']});")
+                        builtin_binds.append(f"VARIANT_ENUM_CAST({builtin_api['name']}::{enum_api['name']});")
 
         builtin_binds.append("")
         builtin_binds.append("#endif // ! GODOT_CPP_BUILTIN_BINDS_HPP")
@@ -387,7 +386,7 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
     if len(fully_used_classes) > 0:
         result.append("")
 
-    result.append(f"#include <gdextension_interface.h>")
+    result.append("#include <gdextension_interface.h>")
     result.append("")
     result.append("namespace godot {")
     result.append("")
@@ -430,13 +429,13 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
             result.append(f'\t\tGDExtensionPtrGetter member_{member["name"]}_getter;')
 
     if "indexing_return_type" in builtin_api:
-        result.append(f"\t\tGDExtensionPtrIndexedSetter indexed_setter;")
-        result.append(f"\t\tGDExtensionPtrIndexedGetter indexed_getter;")
+        result.append("\t\tGDExtensionPtrIndexedSetter indexed_setter;")
+        result.append("\t\tGDExtensionPtrIndexedGetter indexed_getter;")
 
     if "is_keyed" in builtin_api and builtin_api["is_keyed"]:
-        result.append(f"\t\tGDExtensionPtrKeyedSetter keyed_setter;")
-        result.append(f"\t\tGDExtensionPtrKeyedGetter keyed_getter;")
-        result.append(f"\t\tGDExtensionPtrKeyedChecker keyed_checker;")
+        result.append("\t\tGDExtensionPtrKeyedSetter keyed_setter;")
+        result.append("\t\tGDExtensionPtrKeyedGetter keyed_getter;")
+        result.append("\t\tGDExtensionPtrKeyedChecker keyed_checker;")
 
     if "operators" in builtin_api:
         for operator in builtin_api["operators"]:
@@ -622,10 +621,10 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
             return_type = "int32_t"
         elif class_name == "PackedFloat32Array":
             return_type = "float"
-        result.append(f"\tconst " + return_type + f" &operator[](int p_index) const;")
-        result.append(f"\t" + return_type + f" &operator[](int p_index);")
-        result.append(f"\tconst " + return_type + f" *ptr() const;")
-        result.append(f"\t" + return_type + f" *ptrw();")
+        result.append(f"\tconst {return_type} &operator[](int p_index) const;")
+        result.append(f"\t{return_type} &operator[](int p_index);")
+        result.append(f"\tconst {return_type} *ptr() const;")
+        result.append(f"\t{return_type} *ptrw();")
         iterators = """
     struct Iterator {
 		_FORCE_INLINE_ $TYPE &operator*() const {
@@ -694,12 +693,14 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
         result.append(iterators.replace("$TYPE", return_type))
 
     if class_name == "Array":
-        result.append(f"\tconst Variant &operator[](int p_index) const;")
-        result.append(f"\tVariant &operator[](int p_index);")
+        result.append("\tconst Variant &operator[](int p_index) const;")
+        result.append("\tVariant &operator[](int p_index);")
+        result.append("\tvoid set_typed(uint32_t p_type, const StringName &p_class_name, const Variant &p_script);")
+        result.append("\tvoid _ref(const Array &p_from) const;")
 
     if class_name == "Dictionary":
-        result.append(f"\tconst Variant &operator[](const Variant &p_key) const;")
-        result.append(f"\tVariant &operator[](const Variant &p_key);")
+        result.append("\tconst Variant &operator[](const Variant &p_key) const;")
+        result.append("\tVariant &operator[](const Variant &p_key);")
 
     result.append("};")
 
@@ -785,10 +786,10 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
 
     # StringName's constructor internally uses String, so it constructor must be ready !
     if class_name == "StringName":
-        result.append(f"\tString::_init_bindings_constructors_destructor();")
+        result.append("\tString::_init_bindings_constructors_destructor();")
     result.append(f"\t{class_name}::_init_bindings_constructors_destructor();")
 
-    result.append(f"\tStringName __name;")
+    result.append("\tStringName __name;")
 
     if "methods" in builtin_api:
         for method in builtin_api["methods"]:
@@ -917,7 +918,7 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
             if "return_type" in method:
                 method_call += f'return internal::_call_builtin_method_ptr_ret<{correct_type(method["return_type"])}>('
             else:
-                method_call += f"internal::_call_builtin_method_ptr_no_ret("
+                method_call += "internal::_call_builtin_method_ptr_no_ret("
             method_call += f'_method_bindings.method_{method["name"]}, '
             if "is_static" in method and method["is_static"]:
                 method_call += "nullptr"
@@ -1381,9 +1382,9 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
     if "enums" in class_api and class_name != "Object":
         for enum_api in class_api["enums"]:
             if enum_api["is_bitfield"]:
-                result.append(f'VARIANT_BITFIELD_CAST({class_name}, {class_name}::{enum_api["name"]});')
+                result.append(f'VARIANT_BITFIELD_CAST({class_name}::{enum_api["name"]});')
             else:
-                result.append(f'VARIANT_ENUM_CAST({class_name}, {class_name}::{enum_api["name"]});')
+                result.append(f'VARIANT_ENUM_CAST({class_name}::{enum_api["name"]});')
         result.append("")
 
     result.append(f"#endif // ! {header_guard}")
@@ -1397,22 +1398,21 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
 
     class_name = class_api["name"]
     snake_class_name = camel_to_snake(class_name)
-    inherits = class_api["inherits"] if "inherits" in class_api else "Wrapped"
     is_singleton = class_name in singletons
 
     add_header(f"{snake_class_name}.cpp", result)
 
     result.append(f"#include <godot_cpp/classes/{snake_class_name}.hpp>")
     result.append("")
-    result.append(f"#include <godot_cpp/core/engine_ptrcall.hpp>")
-    result.append(f"#include <godot_cpp/core/error_macros.hpp>")
+    result.append("#include <godot_cpp/core/engine_ptrcall.hpp>")
+    result.append("#include <godot_cpp/core/error_macros.hpp>")
     result.append("")
 
     for included in used_classes:
         result.append(f"#include <godot_cpp/{get_include_path(included)}>")
 
     if len(used_classes) > 0:
-        result.append(f"")
+        result.append("")
 
     result.append("namespace godot {")
     result.append("")
@@ -1421,7 +1421,7 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
         result.append(f"{class_name} *{class_name}::get_singleton() {{")
         result.append(f"\tconst StringName __class_name = {class_name}::get_class_static();")
         result.append(
-            f"\tstatic GDExtensionObjectPtr singleton_obj = internal::gde_interface->global_get_singleton(__class_name._native_ptr());"
+            "\tstatic GDExtensionObjectPtr singleton_obj = internal::gde_interface->global_get_singleton(__class_name._native_ptr());"
         )
         result.append("#ifdef DEBUG_ENABLED")
         result.append("\tERR_FAIL_COND_V(singleton_obj == nullptr, nullptr);")
@@ -1459,7 +1459,7 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
                     f'\tCHECK_METHOD_BIND_RET(___method_bind, {get_default_value_for_type(method["return_value"]["type"])});'
                 )
             else:
-                result.append(f"\tCHECK_METHOD_BIND(___method_bind);")
+                result.append("\tCHECK_METHOD_BIND(___method_bind);")
 
             is_ref = False
             if not vararg:
@@ -1493,9 +1493,9 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
                             )
                 else:
                     if method["is_static"]:
-                        method_call += f"internal::_call_native_mb_no_ret(___method_bind, nullptr"
+                        method_call += "internal::_call_native_mb_no_ret(___method_bind, nullptr"
                     else:
-                        method_call += f"internal::_call_native_mb_no_ret(___method_bind, _owner"
+                        method_call += "internal::_call_native_mb_no_ret(___method_bind, _owner"
 
                 if "arguments" in method:
                     method_call += ", "
@@ -1621,7 +1621,13 @@ def generate_global_constant_binds(api, output_dir):
         if enum_def["name"].startswith("Variant."):
             continue
 
-        header.append(f'VARIANT_ENUM_CAST(, godot::{enum_def["name"]});')
+        if enum_def["is_bitfield"]:
+            header.append(f'VARIANT_BITFIELD_CAST(godot::{enum_def["name"]});')
+        else:
+            header.append(f'VARIANT_ENUM_CAST(godot::{enum_def["name"]});')
+
+    # Variant::Type is not a global enum, but only one line, it is worth to place in this file instead of creating new file.
+    header.append(f"VARIANT_ENUM_CAST(godot::Variant::Type);")
 
     header.append("")
 
@@ -1711,7 +1717,7 @@ def generate_utility_functions(api, output_dir):
                 f'\tCHECK_METHOD_BIND_RET(___function, {get_default_value_for_type(function["return_type"])});'
             )
         else:
-            source.append(f"\tCHECK_METHOD_BIND(___function);")
+            source.append("\tCHECK_METHOD_BIND(___function);")
 
         function_call = "\t"
         if not vararg:
@@ -2129,6 +2135,8 @@ def correct_default_value(value, type_name):
         return value_map[value]
     if value == "":
         return f"{type_name}()"
+    if value.startswith("Array["):
+        return f"{{}}"
     return value
 
 

@@ -57,9 +57,6 @@ func _ready():
 	prints("String += operator")
 	prints("  test string +=", $Example.test_string_ops())
 
-	prints("WorkerThreadPool")
-	prints("  test worker_thread_pool", $Example.test_workpool_ops())
-
 	prints("PackedArray iterators")
 	prints("  test packed array iterators", $Example.test_vector_ops())
 
@@ -72,6 +69,12 @@ func _ready():
 	prints("  FIRST", $Example.FIRST)
 	prints("  ANSWER_TO_EVERYTHING", $Example.ANSWER_TO_EVERYTHING)
 	prints("  CONSTANT_WITHOUT_ENUM", $Example.CONSTANT_WITHOUT_ENUM)
+
+	prints("BitFields")
+	prints("  FLAG_ONE", Example.FLAG_ONE)
+	prints("  FLAG_TWO", Example.FLAG_TWO)
+	prints("  returned BitField", $Example.test_bitfield(0))
+	prints("  returned BitField", $Example.test_bitfield(Example.FLAG_ONE | Example.FLAG_TWO))
 
 func _on_Example_custom_signal(signal_name, value):
 	prints("Example emitted:", signal_name, value)
